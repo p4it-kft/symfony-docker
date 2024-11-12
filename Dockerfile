@@ -13,8 +13,6 @@ FROM frankenphp_upstream AS frankenphp_base
 
 WORKDIR /app
 
-VOLUME /app/var/
-
 # persistent / runtime deps
 # hadolint ignore=DL3008
 RUN set -eux; \
@@ -30,6 +28,7 @@ RUN set -eux; \
 		intl \
 		opcache \
 		zip \
+		xsl \
 	;
 
 # https://getcomposer.org/doc/03-cli.md#composer-allow-superuser
@@ -38,6 +37,9 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV PHP_INI_SCAN_DIR=":$PHP_INI_DIR/app.conf.d"
 
 ###> recipes ###
+###> doctrine/doctrine-bundle ###
+RUN install-php-extensions pdo_mysql
+###< doctrine/doctrine-bundle ###
 ###< recipes ###
 
 COPY --link frankenphp/conf.d/10-app.ini $PHP_INI_DIR/app.conf.d/
@@ -48,6 +50,28 @@ ENTRYPOINT ["docker-entrypoint"]
 
 HEALTHCHECK --start-period=60s CMD curl http://localhost:2019/metrics --silent --show-error --fail --output /dev/null || exit 1
 CMD [ "frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile" ]
+
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install -y --no-install-recommends \
+	sudo \
+	mc \
+	bash-completion \
+	&& rm -rf /var/lib/apt/lists/*
+
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+
+#add user for symfony binary
+# hadolint ignore=SC2016
+RUN addgroup --gid ${GROUP_ID} symfony &&\
+	adduser --uid ${USER_ID} --gid ${GROUP_ID} symfony &&\
+	adduser symfony sudo &&\
+	adduser symfony root &&\
+	echo 'symfony ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers &&\
+    mkdir /app/var &&\
+    chown ${USER_ID}:${GROUP_ID} /app/var;
+
+VOLUME /app/var/
 
 # Dev FrankenPHP image
 FROM frankenphp_base AS frankenphp_dev
