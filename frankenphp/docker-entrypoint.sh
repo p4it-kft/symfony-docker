@@ -2,6 +2,7 @@
 set -e
 
 if [ "$1" = 'frankenphp' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
+
 	# Install the project the first time PHP is started
 	# After the installation, the following block can be deleted
 	if [ ! -f composer.json ]; then
@@ -57,8 +58,11 @@ if [ "$1" = 'frankenphp' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
 		fi
 	fi
 
-	setfacl -R -m u:www-data:rwX -m u:"$(whoami)":rwX var
-	setfacl -dR -m u:www-data:rwX -m u:"$(whoami)":rwX var
+	sudo setfacl -R -m u:www-data:rwX -m u:"$(id -u)":rwX var
+	sudo setfacl -dR -m u:www-data:rwX -m u:"$(id -u)":rwX var
+	sudo chown "$(id -u)":"$(id -g)" /data -R
+	sudo chown "$(id -u)":"$(id -g)" /config -R
+	echo 'eval "$(/app/bin/console completion )"' >> ~/.bashrc;
 
 	echo 'PHP app ready!'
 fi
