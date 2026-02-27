@@ -24,3 +24,53 @@ services:
     tty: true
 ###> symfony/mercure-bundle ###
 ###< symfony/mercure-bundle ###
+
+###> doctrine/doctrine-bundle ###
+  database:
+    image: mysql:${MYSQL_VERSION:-8}
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-app}
+      MYSQL_RANDOM_ROOT_PASSWORD: "true"
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-!ChangeMe!}
+      MYSQL_USER: ${MYSQL_USER:-app}
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - ./docker/setup.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./docker/db.data:/var/lib/mysql:rw
+    ports:
+      - "3392:3306"
+###< doctrine/doctrine-bundle ###
+
+###> symfony/mailer ###
+  mailer:
+    image: axllent/mailpit
+    ports:
+      - "1025"
+      - "8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+###< symfony/mailer ###
+
+  node:
+    user: ${USER_ID-1000}:${GROUP_ID-1000}
+    build:
+      context: .
+      dockerfile: Node.Dockerfile
+    image: node:lts-alpine
+    tty: true
+    working_dir: /app
+    ports:
+      - "5173:5173"
+    depends_on:
+      - php
+    volumes:
+      - ./:/app
+      - ~/.ssh:/home/node/.ssh:ro
+    environment:
+      NODE_ENV: development
+      SERVER_NAME: ${SERVER_NAME:-localhost}
